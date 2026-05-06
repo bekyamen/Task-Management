@@ -10,6 +10,7 @@ import (
 	"user-service/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -34,9 +35,14 @@ func main() {
 		log.Fatal("Failed to migrate database schema:", err)
 	}
 
+	// Redis connection
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: os.Getenv("REDIS_HOST") + ":" + os.Getenv("REDIS_PORT"),
+	})
+
 	// Setup clean architecture components
 	userRepo := repository.NewUserRepository(db)
-	userService := services.NewUserService(userRepo, os.Getenv("JWT_SECRET"))
+	userService := services.NewUserService(userRepo, os.Getenv("JWT_SECRET"), redisClient)
 	userController := controllers.NewUserController(userService)
 
 	// Setup Gin router
@@ -47,6 +53,8 @@ func main() {
 	{
 		authRoutes.POST("/register", userController.Register)
 		authRoutes.POST("/login", userController.Login)
+		authRoutes.POST("/forgot-password", userController.ForgotPassword)
+		authRoutes.POST("/reset-password", userController.ResetPassword)
 	}
 
 	// Start server

@@ -15,7 +15,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6380:6379"
 
   user-service:
     build: ./user-service
@@ -25,10 +25,15 @@ services:
       DB_PASSWORD: password
       DB_NAME: user_db
       DB_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       JWT_SECRET: supersecretkey
       PORT: 8080
+    ports:
+    - "8081:8080"
     depends_on:
       - db
+      - redis
 
   task-service:
     build: ./task-service
@@ -42,6 +47,8 @@ services:
       REDIS_PORT: 6379
       JWT_SECRET: supersecretkey
       PORT: 8080
+    ports:
+    - "8082:8080" 
     depends_on:
       - db
       - redis

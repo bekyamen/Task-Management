@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -8,9 +9,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/redis/go-redis/v9"
 )
 
-func AuthMiddleware() gin.HandlerFunc {
+func AuthMiddleware(redisClient *redis.Client) gin.HandlerFunc {
 	secret := os.Getenv("JWT_SECRET")
 
 	return func(c *gin.Context) {
@@ -57,8 +59,26 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		userID := uint(userIDFloat)
+
+		// Session Revocation Check
+		tokenVersionFloat, _ := claims["token_version"].(float64)
+		jwtTokenVersion := int(tokenVersionFloat)
+
+		ctx := context.Background()
+		redisVersionStr, err := redisClient.Get(ctx, fmt.Sprintf("user_version:%d", userID)).Result()
+		if err == nil {
+			var redisVersion int
+			fmt.Sscanf(redisVersionStr, "%d", &redisVersion)
+			if jwtTokenVersion < redisVersion {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Session revoked. Please login again."})
+				c.Abort()
+				return
+			}
+		}
+
 		// Set the user_id in context
-		c.Set("user_id", uint(userIDFloat))
+		c.Set("user_id", userID)
 		c.Next()
 	}
 }

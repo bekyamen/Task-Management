@@ -49,7 +49,7 @@ func main() {
 	r := gin.Default()
 
 	api := r.Group("/api/tasks")
-	api.Use(middlewares.AuthMiddleware())
+	api.Use(middlewares.AuthMiddleware(redisClient))
 	{
 		api.POST("", taskController.CreateTask)
 		api.GET("", taskController.GetTasks)
